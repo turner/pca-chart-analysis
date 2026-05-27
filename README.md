@@ -30,6 +30,34 @@ into `render_pca_psd.py` as layers.
 
 ---
 
+## Reference outputs (Git LFS)
+
+Four "hero" PSDs are committed to this repo via Git LFS so you can
+inspect the layered output without having to run the renderers first:
+
+| File | Produced by | Notes |
+|---|---|---|
+| `pca-chart.psd` | `render_pca_psd.py` (paper defaults) | `L*=80`, `ab_span=120`, `bg-alpha=0.38` |
+| `pca-chart-alpha-1.psd` | `render_pca_psd.py --bg-alpha 1.0` | full-opacity color ramp |
+| `voronoi_layered.psd` | `render_voronoi_psd.py` | Voronoi cells over the same PCA frame |
+| `kde_layered.psd` | `render_kde_psd.py` | KDE coverage contours over the same PCA frame |
+
+All four are ~120 MB. To fetch them when cloning, make sure
+[Git LFS](https://git-lfs.com/) is installed:
+
+```bash
+brew install git-lfs           # macOS
+git lfs install                # one-time, per machine
+git clone https://github.com/turner/pca-chart-analysis.git
+```
+
+Without LFS installed, clones will pull tiny pointer files in place of
+the PSDs and you'll need to regenerate them with the renderers below.
+Every other PSD the renderers produce is `.gitignore`d — only these four
+references live in the repo.
+
+---
+
 ## Conda environment
 
 A conda environment named **`pclai-chart-analysis`** is provided with

@@ -1,5 +1,11 @@
-# Generated Photoshop artifacts (regenerable from the renderers; ~100 MB each)
+# Generated Photoshop artifacts (regenerable from the renderers; ~100 MB each).
+# The four "hero" PSDs below are tracked via Git LFS as reference outputs;
+# everything else is excluded.
 *.psd
+!pca-chart.psd
+!pca-chart-alpha-1.psd
+!voronoi_layered.psd
+!kde_layered.psd
 
 # Other generated chart artifacts
 *.png
