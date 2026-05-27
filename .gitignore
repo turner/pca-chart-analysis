@@ -1,0 +1,19 @@
+# Generated Photoshop artifacts (regenerable from the renderers; ~100 MB each)
+*.psd
+
+# Other generated chart artifacts
+*.png
+*.pdf
+
+# macOS
+.DS_Store
+
+# Claude Code / editor scratch
+.claude/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.ipynb_checkpoints/
