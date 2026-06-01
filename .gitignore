@@ -10,6 +10,9 @@
 # Other generated chart artifacts
 *.png
 *.pdf
+# Figures embedded in the markdown write-ups are kept (so the docs render).
+!lab_gamut_L80.png
+!lab_solid_3d.png
 
 # macOS
 .DS_Store
