@@ -1,8 +1,13 @@
 # PCLAI Color-Ramp Experiment Scripts — Cheat Sheet
 
 Standalone scripts for exploring the failure modes described in
-`pclai_color_ramp_failure_analysis.md`. All take a single TSV (with
-`x1`, `x2` columns) as their only required input.
+`pclai_color_ramp_failure_analysis.md` — the foundational critique of the
+paper's PCA color chart (gamut clipping, the collapse of perceptual
+uniformity, the EUR↔SAS overlap, the "ocean effect"). The geometry of the
+gamut failure is then walked through in `render-lab-gamut-tutorial.md`
+(the 2-D Lab slice) and `render-lab-solid-3d-tutorial.md` (the 3-D color
+solid). All scripts take a single TSV (with `x1`, `x2` columns) as their
+only required input.
 
 All renderers now emit **layered Photoshop (`.psd`) files** instead of
 flat PNG/PDF. Each visual element lives on its own layer so it can be
@@ -19,7 +24,12 @@ alignment.
 | `render_voronoi_psd.py` | Voronoi tessellation of superpopulation centroids over the same PCA frame | layered `.psd` (PCA-frame, registered) |
 | `render_kde_psd.py` | Per-superpopulation KDE contours (95/75/50% coverage) over the same PCA frame | layered `.psd` (PCA-frame, registered) |
 | `render_lab_gamut.py` | sRGB gamut at L*, reference points at TRUE a*b* + per-group Δ | layered `.psd` (CIELAB `(a*, b*)` frame) |
+| `render_lab_solid_3d.py` | sRGB color solid nested inside the human-vision color solid, with the formula slice overlaid | single 3-D `.png` (CIELAB) |
 | `sweep_gamut.py` | Search `(L*, ab_span)` grid for in-gamut configurations | Table + recommendation to stdout |
+
+Two companion write-ups explain the gamut figures in detail:
+`render-lab-gamut-tutorial.md` (2-D slice, `render_lab_gamut.py`) and
+`render-lab-solid-3d-tutorial.md` (3-D solid, `render_lab_solid_3d.py`).
 
 Default parameters in the renderers reproduce the paper's published
 behavior: `L*=80`, `ab_span=120`, `margin=0.1`. Override any of them.
@@ -66,10 +76,13 @@ every library the scripts need. Create it once:
 ```bash
 conda create -n pclai-chart-analysis -c conda-forge -y \
     python=3.11 numpy pandas matplotlib scipy scikit-image pip
-conda run -n pclai-chart-analysis pip install pytoshop
+conda run -n pclai-chart-analysis pip install pytoshop colour-science
 ```
 
-(`pytoshop` is pip-only — not packaged on conda-forge.)
+(`pytoshop` is pip-only — not packaged on conda-forge. `colour-science`
+provides the CIE color-matching data that `render_lab_solid_3d.py` needs;
+it is also on conda-forge but pip-installing it here keeps the recipe
+short.)
 
 Then, before running any of the scripts:
 
@@ -201,10 +214,11 @@ python render_kde_psd.py --tsv reference_pca_metadata.tsv --out kde_layered
 
 ## 4. `render_lab_gamut.py` — Lab a*b* plane with gamut + points
 
-The left panel of `lab_gamut_clipping_hires.png`: sRGB gamut at the
-chosen L*, the formula's ±`ab_span` box, all reference haplotypes at
-their TRUE computed `(a*, b*)`, and per-group mean Δ annotations. Auto-
-groups 1000G `Population_descriptor`s into AFR / EUR / EAS / SAS / AMR.
+The CIELAB-frame gamut-clipping figure: sRGB gamut at the chosen L*, the
+formula's ±`ab_span` box, all reference haplotypes at their TRUE computed
+`(a*, b*)`, and per-group mean Δ annotations. Auto-groups 1000G
+`Population_descriptor`s into AFR / EUR / EAS / SAS / AMR. The projection
+method is documented in `render-lab-gamut-tutorial.md`.
 
 This chart is in the **CIELAB (a*, b*) frame**, not PC1/PC2, so it does
 *not* register with the PCA / Voronoi / KDE PSDs. Layers (top → bottom):
@@ -250,12 +264,56 @@ python render_lab_gamut.py --tsv reference_pca_metadata.tsv \
 | `--dot-size` | `4.0` | reference dot size |
 | `--figwidth`/`--figheight` | `9.0`/`9.0` | figure size |
 | `--dpi` | `180` | output resolution |
+| `--png` | (off) | also write a flattened PNG (all layers composited) to this path |
 
 Prints a per-group n / meanΔ / maxΔ summary to stdout.
 
+The flattened PNG (e.g. `--png lab_gamut_L80.png`) is the single-panel
+figure embedded in `pclai_color_ramp_failure_analysis.md` §4.
+
 ---
 
-## 5. `sweep_gamut.py` — find a working `(L*, ab_span)` pair
+## 5. `render_lab_solid_3d.py` — 3-D sRGB solid inside human vision
+
+A single 3-D still (PNG, not a PSD): the sRGB gamut as its true twisted
+solid in CIELAB, nested inside the **visible-color solid** (the
+Rösch–MacAdam optimal-color limit of human vision), with the paper's
+fixed-L* formula slice drawn in. It is the 3-D parent of
+`render_lab_gamut.py`'s 2-D slice. Full write-up in
+`render-lab-solid-3d-tutorial.md`.
+
+### Default figure (paper's L*=80, ab_span=120)
+```bash
+python render_lab_solid_3d.py --out lab_solid_3d.png
+```
+
+### A candidate fix — watch the formula box shrink inside the sRGB solid
+```bash
+python render_lab_solid_3d.py --L 60 --ab-span 45 --out fixed.png
+```
+
+### Clean "shapes only" image from a different angle
+```bash
+python render_lab_solid_3d.py --no-formula --elev 18 --azim -40 --out clean.png
+```
+
+### All knobs
+| flag | default | meaning |
+|---|---|---|
+| `--out` | `lab_solid_3d.png` | output PNG path |
+| `--L` | `80.0` | fixed CIELAB lightness for the formula slice |
+| `--ab-span` | `120.0` | formula extent: a*, b* in `[-span, +span]` |
+| `--face-res` | `24` | grid resolution per sRGB cube face |
+| `--elev`/`--azim` | `22.0`/`-58.0` | camera elevation / azimuth (degrees) |
+| `--dpi` | `220` | output resolution |
+| `--no-formula` | off | omit the formula slice overlay |
+
+Needs `scipy` (ConvexHull) and `colour-science` (CIE data) — both in the
+conda env above.
+
+---
+
+## 6. `sweep_gamut.py` — find a working `(L*, ab_span)` pair
 
 Tests every `(L*, ab_span)` pair on a grid and reports the percentage of
 reference haplotypes that fall inside the sRGB gamut for each. Prints a

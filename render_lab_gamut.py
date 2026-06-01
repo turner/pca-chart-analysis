@@ -117,6 +117,18 @@ def render_mpl_layer(draw_fn, figwidth, figheight, dpi):
     return buf
 
 
+def composite_rgba(layers):
+    """Alpha-over composite a list of uint8 RGBA arrays, bottom-first.
+    Returns an (H, W, 3) uint8 RGB array suitable for a flat PNG."""
+    out = np.zeros((*layers[0].shape[:2], 4), dtype=float)
+    for layer in layers:
+        src = layer.astype(float) / 255.0
+        sa = src[..., 3:4]
+        out[..., :3] = src[..., :3] * sa + out[..., :3] * (1.0 - sa)
+        out[..., 3:4] = sa + out[..., 3:4] * (1.0 - sa)
+    return np.clip(out[..., :3] * 255.0, 0, 255).astype(np.uint8)
+
+
 def rgba_to_psd_layer(name, rgba, opacity=255):
     r = np.ascontiguousarray(rgba[..., 0])
     g = np.ascontiguousarray(rgba[..., 1])
@@ -145,6 +157,9 @@ def main():
     ap.add_argument("--figwidth", type=float, default=9.0)
     ap.add_argument("--figheight", type=float, default=9.0)
     ap.add_argument("--dpi", type=int, default=180)
+    ap.add_argument("--png", default=None,
+                    help="also write a flattened PNG to this path "
+                         "(alpha-composite of all layers)")
     args = ap.parse_args()
 
     df = pd.read_csv(args.tsv, sep="\t")
@@ -358,6 +373,14 @@ def main():
 
     print(f"wrote {out}")
     print(f"  canvas: {bg_rgba.shape[1]} x {bg_rgba.shape[0]} px")
+
+    if args.png:
+        flat = composite_rgba([
+            bg_rgba, gamut_layer_rgba, boundary_rgba, bbox_rgba,
+            origin_rgba, points_rgba, centroids_rgba, legend_rgba, axes_rgba,
+        ])
+        plt.imsave(args.png, flat)
+        print(f"wrote {args.png}")
 
     # summary
     print(f"\nSummary at L*={args.L}, ab_span={args.ab_span}:")

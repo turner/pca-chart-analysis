@@ -1,6 +1,6 @@
 # KDE Outline Contours: A Tutorial
 
-This document explains the algorithm used in `points2kde.py`. The goal is to render each superpopulation as a set of nested outline rings on the (x1, x2) plane — rings whose interpretation is "X% of this population's probability mass lies inside this curve."
+This document explains the algorithm used in `render_kde_psd.py`. The goal is to render each superpopulation as a set of nested outline rings on the (x1, x2) plane — rings whose interpretation is "X% of this population's probability mass lies inside this curve."
 
 The technique has three pieces:
 
@@ -73,7 +73,7 @@ Given the KDE and a target coverage c (say 0.95):
 3. Compute the cumulative sum, normalized: `cdf_k = (d_1 + d_2 + ... + d_k) / sum(d_i)`.
 4. Find the smallest k such that `cdf_k >= c`. The density value at that rank, `d_k`, is your threshold.
 
-In code (this is what `points2kde.py` does):
+In code (this is what `render_kde_psd.py` does):
 
 ```python
 sample_density = kde(sub.T)
