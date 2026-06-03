@@ -235,7 +235,64 @@ why the boundary reads sharply even where the fill fades.
 
 ---
 
-## 6. How the projection drives the figure's claim
+## 6. The clipped points and their displacement paths
+
+The figure carries each reference haplotype **twice**, on two separate,
+independently toggleable layers:
+
+- **"Sample points"** — the dot at its **true** (pre-clip) `(a*, b*)`,
+  colored by its post-clip displayed sRGB.
+- **"Clipped points"** — the dot at the `(a*, b*)` it **actually lands on**
+  after the sRGB clip (outlined in white to distinguish it), with a third
+  **"Clip paths"** layer drawing a faint connector between the two.
+
+The landing position is computed by running each point through the ordinary
+display path and back into Lab:
+
+```python
+disp_rgb    = np.clip(lab2rgb(Lab_pts), 0, 1)   # what the screen shows
+landed_lab  = rgb2lab(disp_rgb)                  # that color, back in Lab
+a_landed, b_landed = landed_lab[..., 1], landed_lab[..., 2]
+```
+
+### 6a. Why landing points do *not* sit on the drawn boundary
+
+Intuition says every clipped point should snap onto the white gamut outline.
+Most do not — and this is correct, not a bug. The reason is that **the clip
+is a 3-D operation while the figure is a 2-D slice.**
+
+`np.clip(rgb, 0, 1)` clamps each channel independently in RGB space. When it
+pulls a channel from, say, `1.07` down to `1.0`, the resulting color differs
+from the requested one in *all three* Lab dimensions — including `L*`. A
+point requested at `L*=80` routinely lands at `L*=72`, or `L*=53`. It lands
+honestly on the surface of the 3-D sRGB solid, but **at a different
+lightness than the slice being drawn.** Projected onto the fixed-`L*=80`
+plane, that landing point falls *inside* the `L*=80` boundary, because the
+gamut cross-section at the lower lightness is wider and sits inboard of the
+`L*=80` outline.
+
+### 6b. The connectors are a projected shadow, not the full move
+
+Each "Clip paths" line is the `(a*, b*)` **shadow** of a genuinely 3-D
+displacement vector `(ΔL*, Δa*, Δb*)`. The `ΔL*` leg points straight out of
+the page and is invisible here. Consequences worth keeping in mind when
+reading the figure:
+
+- A point that clips mostly in **lightness** shows a short on-screen
+  connector despite a large true displacement — most of its move went out of
+  the plane.
+- The per-group **Δ** annotations (and the headline `mean Δ`) are the
+  **full 3-D** Euclidean distances in Lab, so they are generally *larger*
+  than the drawn connector lengths would imply.
+
+To see the missing third leg as real depth, use the companion 3-D view
+(`render_lab_solid_3d.py` / `render-lab-solid-3d-tutorial.md`), where the
+clip lands visibly on the gamut surface instead of being flattened onto one
+lightness plane.
+
+---
+
+## 7. How the projection drives the figure's claim
 
 Everything quantitative in the figure rests on this projection:
 
@@ -258,7 +315,7 @@ white-edged at its border — is the sRGB gamut as it appears in the diagram.
 
 ---
 
-## 7. Parameters that change the projection
+## 8. Parameters that change the projection
 
 | Flag | Effect on the projection |
 |------|--------------------------|

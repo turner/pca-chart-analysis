@@ -23,7 +23,7 @@ alignment.
 | **`render_pca_psd.py`** | PCA color ramp + gamut mask + reference points + axes | layered `.psd` (PCA-frame, registered) |
 | `render_voronoi_psd.py` | Voronoi tessellation of superpopulation centroids over the same PCA frame | layered `.psd` (PCA-frame, registered) |
 | `render_kde_psd.py` | Per-superpopulation KDE contours (95/75/50% coverage) over the same PCA frame | layered `.psd` (PCA-frame, registered) |
-| `render_lab_gamut.py` | sRGB gamut at L*, reference points at TRUE a*b* + per-group Δ | layered `.psd` (CIELAB `(a*, b*)` frame) |
+| `render_lab_gamut.py` | sRGB gamut at L*, reference points at TRUE a*b*, their post-clip landing points + paths, per-group Δ | layered `.psd` (CIELAB `(a*, b*)` frame) |
 | `render_lab_solid_3d.py` | sRGB color solid nested inside the human-vision color solid, with the formula slice overlaid | single 3-D `.png` (CIELAB) |
 | `sweep_gamut.py` | Search `(L*, ab_span)` grid for in-gamut configurations | Table + recommendation to stdout |
 
@@ -216,7 +216,8 @@ python render_kde_psd.py --tsv reference_pca_metadata.tsv --out kde_layered
 
 The CIELAB-frame gamut-clipping figure: sRGB gamut at the chosen L*, the
 formula's ±`ab_span` box, all reference haplotypes at their TRUE computed
-`(a*, b*)`, and per-group mean Δ annotations. Auto-groups 1000G
+`(a*, b*)`, where they LAND after the sRGB clip (with connector paths),
+and per-group mean Δ annotations. Auto-groups 1000G
 `Population_descriptor`s into AFR / EUR / EAS / SAS / AMR. The projection
 method is documented in `render-lab-gamut-tutorial.md`.
 
@@ -226,12 +227,19 @@ This chart is in the **CIELAB (a*, b*) frame**, not PC1/PC2, so it does
 1. **Axes & title**
 2. **Legend**
 3. **Centroids**
-4. **Sample points**
-5. **Origin axes**
-6. **Formula bbox** — dashed yellow rectangle for ±`ab_span`.
-7. **Gamut boundary** — white contour at the sRGB gamut edge.
-8. **sRGB gamut** — gamut interior, colored by true sRGB; transparent outside.
-9. **Background** — solid dark fill.
+4. **Clipped points** — same haplotypes at the `(a*, b*)` they LAND on after the sRGB clip; outlined dots.
+5. **Clip paths** — faint white connectors tracing each point's displacement (TRUE → clipped).
+6. **Sample points** — haplotypes at their TRUE `(a*, b*)`.
+7. **Origin axes**
+8. **Formula bbox** — dashed yellow rectangle for ±`ab_span`.
+9. **Gamut boundary** — white contour at the sRGB gamut edge.
+10. **sRGB gamut** — gamut interior, colored by true sRGB; transparent outside.
+11. **Background** — solid dark fill.
+
+The "Clipped points" and "Clip paths" layers are projections onto the
+fixed-`L*` plane of a 3-D clip: clamping RGB to `[0, 1]` also moves `L*`,
+so the displayed connectors and landing dots are the `(a*, b*)` *shadow*
+of the full 3-D displacement (see the tutorial, §6).
 
 ### Faithful reproduction
 ```bash

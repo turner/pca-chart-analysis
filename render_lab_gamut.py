@@ -14,9 +14,13 @@ own layer (bottom to top):
   5. "Origin axes"       — faint white lines through (0, 0).
   6. "Sample points"     — reference haplotypes at their TRUE (a*, b*),
                            colored by their POST-CLIP displayed sRGB.
-  7. "Centroids"         — per-group centroid markers + name/Δ labels.
-  8. "Legend"            — corner annotation box.
-  9. "Axes & title"      — matplotlib axes/ticks/labels/title.
+  7. "Clip paths"        — faint connectors tracing each point's (a*, b*)
+                           displacement from TRUE to clipped position.
+  8. "Clipped points"    — the same haplotypes at the (a*, b*) they actually
+                           land on after the sRGB clip.
+  9. "Centroids"         — per-group centroid markers + name/Δ labels.
+ 10. "Legend"            — corner annotation box.
+ 11. "Axes & title"      — matplotlib axes/ticks/labels/title.
 
 Input: a TSV with x1, x2 (e.g. reference_pca_metadata.tsv).
 If a Population_descriptor column is present, points are grouped into
@@ -182,6 +186,10 @@ def main():
     landed_lab = rgb2lab(disp_rgb[np.newaxis, ...])[0]
     delta = np.sqrt(np.sum((landed_lab - np.stack([L_arr, a_true, b_true], -1)) ** 2, axis=-1))
 
+    # Where each point actually lands after the sRGB clip, in the a*b* plane.
+    a_landed = landed_lab[..., 1]
+    b_landed = landed_lab[..., 2]
+
     # --- Build gamut raster at this L* -----------------------------------
     lim = args.axis_limit
     ga = np.linspace(-lim, lim, args.grid)
@@ -272,7 +280,7 @@ def main():
 
     origin_rgba = render_mpl_layer(draw_origin_axes, args.figwidth, args.figheight, args.dpi)
 
-    # ---- Layer 6: sample points -----------------------------------------
+    # ---- Layer 6: sample points (true positions) ------------------------
     def draw_points(ax):
         for g in unique_groups:
             mask = groups == g
@@ -294,7 +302,43 @@ def main():
 
     points_rgba = render_mpl_layer(draw_points, args.figwidth, args.figheight, args.dpi)
 
-    # ---- Layer 7: centroids + group labels ------------------------------
+    # ---- Layer 7: clip displacement connectors --------------------------
+    # Faint lines tracing each point's (a*, b*) shadow of its 3D move from
+    # the TRUE position to where it lands after the sRGB clip.
+    def draw_clip_paths(ax):
+        for ai, bi, al, bl in zip(a_true, b_true, a_landed, b_landed):
+            ax.plot([ai, al], [bi, bl], color="white", linewidth=0.4, alpha=0.35)
+        setup_axes(ax)
+
+    clip_paths_rgba = render_mpl_layer(draw_clip_paths, args.figwidth, args.figheight, args.dpi)
+
+    # ---- Layer 8: clipped sample points ---------------------------------
+    # The same points, but at the (a*, b*) they actually land on after the
+    # sRGB clip. In-gamut points are unchanged; out-of-gamut points collapse
+    # onto the gamut surface.
+    def draw_clipped_points(ax):
+        for g in unique_groups:
+            mask = groups == g
+            ax.scatter(
+                a_landed[mask], b_landed[mask],
+                c=disp_rgb[mask],
+                s=args.dot_size,
+                linewidths=0.3,
+                edgecolors="white",
+                alpha=0.85,
+            )
+        if other_present:
+            mask = (groups == "OTHER") | (groups == "ALL")
+            ax.scatter(
+                a_landed[mask], b_landed[mask],
+                c=disp_rgb[mask], s=args.dot_size,
+                linewidths=0.3, edgecolors="white", alpha=0.85,
+            )
+        setup_axes(ax)
+
+    clipped_rgba = render_mpl_layer(draw_clipped_points, args.figwidth, args.figheight, args.dpi)
+
+    # ---- Layer 9: centroids + group labels ------------------------------
     def draw_centroids(ax):
         for g in unique_groups:
             mask = groups == g
@@ -312,13 +356,14 @@ def main():
 
     centroids_rgba = render_mpl_layer(draw_centroids, args.figwidth, args.figheight, args.dpi)
 
-    # ---- Layer 8: legend annotation -------------------------------------
+    # ---- Layer 10: legend annotation ------------------------------------
     def draw_legend(ax):
         ax.text(
             -lim + 6, -lim + 6,
             "white contour = sRGB gamut boundary at this L*\n"
             f"dashed yellow box = formula extent ±{s:g}\n"
-            "dots at TRUE (a*, b*); colored by POST-CLIP sRGB",
+            "dots at TRUE (a*, b*); colored by POST-CLIP sRGB\n"
+            "outlined dots = where points LAND after the sRGB clip",
             color="#ffe680", fontsize=8.5,
             va="bottom", ha="left",
             bbox=dict(boxstyle="round,pad=0.4", facecolor=BG_COLOR,
@@ -328,7 +373,7 @@ def main():
 
     legend_rgba = render_mpl_layer(draw_legend, args.figwidth, args.figheight, args.dpi)
 
-    # ---- Layer 9: axes & title (visible spines/ticks/labels) ------------
+    # ---- Layer 11: axes & title (visible spines/ticks/labels) -----------
     title = (
         f"PCLAI Color Formula: sRGB Gamut Clipping at L* = {args.L:g}\n"
         f"{n_out}/{n_total} ({100*n_out/n_total:.1f}%) reference haplotypes fall outside the sRGB gamut · "
@@ -353,6 +398,8 @@ def main():
         rgba_to_psd_layer("Axes & title",   axes_rgba),
         rgba_to_psd_layer("Legend",         legend_rgba),
         rgba_to_psd_layer("Centroids",      centroids_rgba),
+        rgba_to_psd_layer("Clipped points", clipped_rgba),
+        rgba_to_psd_layer("Clip paths",     clip_paths_rgba),
         rgba_to_psd_layer("Sample points",  points_rgba),
         rgba_to_psd_layer("Origin axes",    origin_rgba),
         rgba_to_psd_layer("Formula bbox",   bbox_rgba),
@@ -377,7 +424,8 @@ def main():
     if args.png:
         flat = composite_rgba([
             bg_rgba, gamut_layer_rgba, boundary_rgba, bbox_rgba,
-            origin_rgba, points_rgba, centroids_rgba, legend_rgba, axes_rgba,
+            origin_rgba, points_rgba, clip_paths_rgba, clipped_rgba,
+            centroids_rgba, legend_rgba, axes_rgba,
         ])
         plt.imsave(args.png, flat)
         print(f"wrote {args.png}")

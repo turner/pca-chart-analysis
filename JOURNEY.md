@@ -54,8 +54,12 @@ color ramp shows colors but hides the geometry of the failure. This
 script switches into the CIELAB `(a*, b*)` frame, draws the actual
 sRGB gamut at the chosen lightness, the formula's ±`ab_span` bounding
 box, and every reference haplotype at its *true* (pre-clip) Lab
-position. It is the diagram in the failure analysis, rebuilt as a
-program we can re-render with different parameters. The per-group Δ
+position. A later pass added two more layers — each haplotype's
+post-clip **landing** position and a connector tracing the move — which
+makes the clip a visible displacement rather than just a color swap
+(with the caveat that those paths are the 2-D shadow of a 3-D clip; see
+the tutorial §6). It is the diagram in the failure analysis, rebuilt as
+a program we can re-render with different parameters. The per-group Δ
 numbers it prints to stdout match the paper's tables, confirming the
 underlying math is reproduced correctly.
 

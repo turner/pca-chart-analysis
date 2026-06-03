@@ -156,7 +156,8 @@ Beyond the repo's usual `numpy` / `matplotlib` / `scikit-image`:
 | View | One horizontal slice at fixed `L*` | The whole solid |
 | sRGB region | Emergent from a grid inclusion test ([see note](render-lab-gamut-tutorial.md)) | Warped cube surface |
 | Outer context | Formula `±ab_span` box on the plane | Visible-color shell + formula slice in 3-D |
-| Data points | Reference haplotypes plotted on the slice | (not shown — this is a geometry figure) |
+| Data points | Reference haplotypes plotted on the slice, plus their post-clip landing points and connector paths | (not shown — this is a geometry figure) |
+| Clip displacement | Only the `(a*, b*)` *shadow* of the move (L\* change is out-of-plane) | The natural home for the full 3-D move (the clip lands on the surface) |
 | Best for | Quantifying *which* and *how many* points clip | Intuition for *why*: sRGB is a small solid |
 
 Use the 3-D still to make the conceptual case ("the formula reaches outside
